@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kalkulator Transformasi Lauf 2D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#eef2f4;
+    --paper-line:#d3dde3;
+    --ink:#142433;
+    --ink-soft:#425468;
+    --blueprint:#1c3d5a;
+    --blueprint-deep:#0f2438;
+    --copper:#b1592f;
+    --copper-soft:#d97f52;
+    --ok-bg:#e4ede9;
+    --warn:#a8422a;
+    --rule:#c3ced6;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    font-family:'Source Serif 4', Georgia, serif;
+    background:
+      linear-gradient(var(--paper-line) 1px, transparent 1px) 0 0/100% 34px,
+      linear-gradient(90deg, var(--paper-line) 1px, transparent 1px) 0 0/34px 100%,
+      var(--paper);
+    color:var(--ink);
+    line-height:1.55;
+  }
+  .wrap{max-width:960px;margin:0 auto;padding:0 24px 90px;}
+
+  /* ---------- HERO ---------- */
+  .hero{
+    position:relative;
+    background:var(--blueprint-deep);
+    color:#eaf1f6;
+    padding:64px 24px 50px;
+    overflow:hidden;
+    border-bottom:3px solid var(--copper);
+  }
+  .hero-inner{max-width:960px;margin:0 auto;position:relative;z-index:2;}
+  .hero svg{position:absolute;inset:0;width:100%;height:100%;opacity:.55;z-index:1;}
+  .eyebrow-line{
+    display:flex;align-items:center;gap:14px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:.78rem;letter-spacing:.04em;color:#8fb0c6;margin-bottom:18px;
+  }
+  .eyebrow-line::before{content:"";width:36px;height:1px;background:#8fb0c6;}
+  .hero h1{
+    font-size:clamp(2rem,4.6vw,3.1rem);
+    font-weight:700;margin:0 0 10px;letter-spacing:-.01em;max-width:14ch;
+  }
+  .hero p.lede{
+    font-size:1.08rem;color:#c4d6e2;max-width:56ch;margin:0 0 6px;
+  }
+  .hero .formula{
+    margin-top:22px;font-family:'IBM Plex Mono',monospace;font-size:.92rem;
+    color:#eecdb8;background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.14);padding:14px 18px;display:inline-block;
+    border-radius:2px;
+  }
+
+  /* ---------- SECTIONS ---------- */
+  section{padding:44px 0;border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  h2{
+    font-size:1.5rem;font-weight:600;margin:0 0 6px;color:var(--blueprint-deep);
+    display:flex;align-items:baseline;gap:10px;
+  }
+  h2 .idx{font-family:'IBM Plex Mono',monospace;font-size:.85rem;color:var(--copper);font-weight:500;}
+  .section-note{color:var(--ink-soft);font-size:.96rem;margin:0 0 22px;max-width:70ch;}
+
+  /* ---------- NIM PANEL ---------- */
+  .nim-panel{
+    display:flex;flex-wrap:wrap;gap:22px 32px;align-items:flex-end;
+    background:#fff;border:1px solid var(--rule);padding:22px 26px;
+    border-left:4px solid var(--copper);
+  }
+  .field{display:flex;flex-direction:column;gap:6px;}
+  .field label{font-family:'IBM Plex Mono',monospace;font-size:.75rem;color:var(--ink-soft);letter-spacing:.03em;}
+  .field input{
+    width:100px;font-family:'IBM Plex Mono',monospace;font-size:1.3rem;font-weight:600;
+    color:var(--blueprint-deep);border:none;border-bottom:2px solid var(--blueprint);
+    background:transparent;padding:4px 2px;
+  }
+  .field input:focus{outline:none;border-color:var(--copper);}
+  .nim-preview{font-family:'IBM Plex Mono',monospace;color:var(--ink-soft);font-size:.92rem;}
+  .nim-preview b{color:var(--copper);}
+  .actions{margin-left:auto;display:flex;gap:10px;}
+  .btn{
+    font-family:'IBM Plex Mono',monospace;font-size:.85rem;font-weight:500;
+    border:1px solid var(--blueprint);background:var(--blueprint);color:#fff;
+    padding:11px 20px;cursor:pointer;letter-spacing:.02em;
+  }
+  .btn:hover{background:var(--blueprint-deep);}
+  .btn.ghost{background:transparent;color:var(--blueprint);}
+  .btn.ghost:hover{background:var(--blueprint);color:#fff;}
+
+  /* ---------- TABLES ---------- */
+  .table-scroll{overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-size:.92rem;background:#fff;}
+  th,td{border:1px solid var(--rule);padding:9px 12px;text-align:right;font-family:'IBM Plex Mono',monospace;}
+  th{background:var(--blueprint-deep);color:#eaf1f6;font-weight:500;font-size:.78rem;letter-spacing:.02em;text-align:right;}
+  td:first-child,th:first-child{text-align:left;font-weight:600;}
+  tbody tr:nth-child(even){background:#f5f8fa;}
+  .tag{font-family:'IBM Plex Mono',monospace;font-size:.72rem;padding:2px 8px;border:1px solid currentColor;}
+  .tag.gcp{color:var(--blueprint);}
+  .tag.new{color:var(--copper);}
+
+  /* ---------- STAT GRID ---------- */
+  .grid-2{display:grid;grid-template-columns:1.15fr .85fr;gap:26px;}
+  @media (max-width:760px){.grid-2{grid-template-columns:1fr;}}
+  .stat-list{background:#fff;border:1px solid var(--rule);padding:22px 26px;}
+  .stat-row{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px dashed var(--rule);font-size:.94rem;}
+  .stat-row:last-child{border-bottom:none;}
+  .stat-row .k{color:var(--ink-soft);}
+  .stat-row .v{font-family:'IBM Plex Mono',monospace;font-weight:600;color:var(--blueprint-deep);}
+  .stat-row.highlight .v{color:var(--copper);font-size:1.15rem;}
+
+  details{background:#fff;border:1px solid var(--rule);margin-top:14px;}
+  details summary{
+    padding:14px 20px;cursor:pointer;font-family:'IBM Plex Mono',monospace;
+    font-size:.85rem;color:var(--blueprint);list-style:none;display:flex;justify-content:space-between;
+  }
+  details summary::-webkit-details-marker{display:none;}
+  details summary::after{content:"+";font-size:1.1rem;}
+  details[open] summary::after{content:"–";}
+  details .table-scroll{padding:0 20px 20px;}
+  .matrix-table td, .matrix-table th{text-align:right;font-size:.78rem;padding:6px 9px;}
+
+  footer{padding:30px 24px 60px;text-align:center;color:var(--ink-soft);font-size:.82rem;font-family:'IBM Plex Mono',monospace;}
+
+  @media print{
+    .no-print{display:none!important;}
+    body{background:#fff;}
+    .hero{background:#fff;color:#000;border-bottom:2px solid #000;}
+    .hero svg{display:none;}
+    section{border-bottom:1px solid #999;}
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <svg viewBox="0 0 960 260" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <filter id="warp" x="-20%" y="-20%" width="140%" height="140%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.012 0.02" numOctaves="2" seed="7" result="noise"/>
+        <feDisplacementMap in="SourceGraphic" in2="noise" scale="55" xChannelSelector="R" yChannelSelector="G"/>
+      </filter>
+    </defs>
+    <g stroke="#3d6a8a" stroke-width="1">
+      <g filter="url(#warp)">
+        <!-- vertical lines -->
+        <line x1="0" y1="0" x2="0" y2="260"/><line x1="60" y1="0" x2="60" y2="260"/>
+        <line x1="120" y1="0" x2="120" y2="260"/><line x1="180" y1="0" x2="180" y2="260"/>
+        <line x1="240" y1="0" x2="240" y2="260"/><line x1="300" y1="0" x2="300" y2="260"/>
+        <line x1="360" y1="0" x2="360" y2="260"/><line x1="420" y1="0" x2="420" y2="260"/>
+        <line x1="480" y1="0" x2="480" y2="260"/><line x1="540" y1="0" x2="540" y2="260"/>
+        <line x1="600" y1="0" x2="600" y2="260"/><line x1="660" y1="0" x2="660" y2="260"/>
+        <line x1="720" y1="0" x2="720" y2="260"/><line x1="780" y1="0" x2="780" y2="260"/>
+        <line x1="840" y1="0" x2="840" y2="260"/><line x1="900" y1="0" x2="900" y2="260"/>
+        <line x1="960" y1="0" x2="960" y2="260"/>
+        <!-- horizontal lines -->
+        <line x1="0" y1="0" x2="960" y2="0"/><line x1="0" y1="26" x2="960" y2="26"/>
+        <line x1="0" y1="52" x2="960" y2="52"/><line x1="0" y1="78" x2="960" y2="78"/>
+        <line x1="0" y1="104" x2="960" y2="104"/><line x1="0" y1="130" x2="960" y2="130"/>
+        <line x1="0" y1="156" x2="960" y2="156"/><line x1="0" y1="182" x2="960" y2="182"/>
+        <line x1="0" y1="208" x2="960" y2="208"/><line x1="0" y1="234" x2="960" y2="234"/>
+        <line x1="0" y1="260" x2="960" y2="260"/>
+      </g>
+    </g>
+  </svg>
+  <div class="hero-inner">
+    <div class="eyebrow-line">Sistem &amp; Transformasi Koordinat</div>
+    <h1>Kalkulator Transformasi Lauf 2D</h1>
+    <p class="lede">Polinomial konform derajat dua, diselesaikan dengan kuadrat terkecil dari enam titik sekutu &mdash; lengkap dengan ketelitian parameter, RMS, dan koordinat titik baru.</p>
+    <div class="formula">X = a·x − b·y + c·(x²−y²) − d·(2xy) + c₁&nbsp;&nbsp;&nbsp;Y = b·x + a·y + d·(x²−y²) + c·(2xy) + c₂</div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <section class="no-print" id="nim">
+    <h2><span class="idx">01</span> Variabel NIM</h2>
+    <p class="section-note">Koordinat asal Titik 1 mengikuti dua digit terakhir NIM: x₁ = 90.XX, y₁ = 90.YY. Ubah nilainya, seluruh hitungan di bawah diperbarui otomatis.</p>
+    <div class="nim-panel">
+      <div class="field">
+        <label for="inputXX">XX</label>
+        <input type="number" id="inputXX" value="67" min="0" max="99">
+      </div>
+      <div class="field">
+        <label for="inputYY">YY</label>
+        <input type="number" id="inputYY" value="72" min="0" max="99">
+      </div>
+      <div class="nim-preview">Titik 1 &rarr; x₁ = <b id="previewX">90.67</b> m,&nbsp; y₁ = <b id="previewY">90.72</b> m</div>
+      <div class="actions">
+        <button class="btn" onclick="calculateAll()">Hitung ulang</button>
+        <button class="btn ghost" onclick="window.print()">Cetak / PDF</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="data">
+    <h2><span class="idx">02</span> Data Koordinat</h2>
+    <p class="section-note">Titik 1&ndash;6 adalah titik sekutu (GCP) yang menentukan parameter transformasi; titik 7&ndash;10 dicari koordinatnya setelah parameter diperoleh.</p>
+    <div class="table-scroll">
+      <table id="tableInput">
+        <thead><tr><th>Titik</th><th>x asal (m)</th><th>y asal (m)</th><th>X tujuan (m)</th><th>Y tujuan (m)</th><th>Peran</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="params">
+    <h2><span class="idx">03</span> Parameter Transformasi</h2>
+    <p class="section-note">Diselesaikan dari X = (AᵀA)⁻¹·AᵀF menggunakan enam titik sekutu.</p>
+    <div class="table-scroll">
+      <table id="tableParams">
+        <thead><tr><th>Parameter</th><th>Nilai estimasi</th><th>Simpangan baku (σ)</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="precision">
+    <h2><span class="idx">04</span> Ketelitian &amp; RMS</h2>
+    <div class="grid-2">
+      <div class="stat-list">
+        <div class="stat-row"><span class="k">Jumlah kuadrat residu, VᵀV</span><span class="v" id="valVTV">&ndash;</span></div>
+        <div class="stat-row"><span class="k">Variansi referensi, σ₀²</span><span class="v" id="valSigma0Sq">&ndash;</span></div>
+        <div class="stat-row"><span class="k">Standar deviasi referensi, σ₀</span><span class="v" id="valSigma0">&ndash;</span></div>
+        <div class="stat-row"><span class="k">RMSE arah X</span><span class="v" id="valRmseX">&ndash;</span></div>
+        <div class="stat-row"><span class="k">RMSE arah Y</span><span class="v" id="valRmseY">&ndash;</span></div>
+        <div class="stat-row highlight"><span class="k">RMSE horizontal (2D)</span><span class="v" id="valRmse2D">&ndash;</span></div>
+      </div>
+      <div class="stat-list">
+        <p class="section-note" style="margin-bottom:12px;">Derajat kebebasan hitungan: 12 persamaan (6 titik × 2) dikurangi 6 parameter Lauf.</p>
+        <div class="stat-row"><span class="k">Jumlah persamaan</span><span class="v">12</span></div>
+        <div class="stat-row"><span class="k">Jumlah parameter</span><span class="v">6</span></div>
+        <div class="stat-row"><span class="k">Derajat kebebasan (df)</span><span class="v">6</span></div>
+        <div class="stat-row"><span class="k">Arah pergeseran α</span><span class="v" style="font-size:.82rem;font-weight:400;">tan⁻¹(vₓ / v_y)</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="residuals">
+    <h2><span class="idx">05</span> Residu Titik Sekutu</h2>
+    <p class="section-note">v = A·X − F pada tiap titik sekutu; d = pergeseran, α = arah pergeseran dari sumbu Y.</p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Titik</th><th>vₓ (m)</th><th>v_y (m)</th><th>Pergeseran d (m)</th><th>Arah α (°)</th></tr></thead>
+        <tbody id="bodyResiduals"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="newpoints">
+    <h2><span class="idx">06</span> Koordinat Baru — Titik 7&ndash;10</h2>
+    <p class="section-note">Hasil substitusi koordinat asal ke persamaan Lauf dengan parameter di atas.</p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Titik</th><th>x asal (m)</th><th>y asal (m)</th><th>X baru (m)</th><th>Y baru (m)</th></tr></thead>
+        <tbody id="bodyNewPoints"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="no-print" id="matrices">
+    <h2><span class="idx">07</span> Rincian Matriks</h2>
+    <p class="section-note">Langkah antara perataan kuadrat terkecil, untuk keperluan pemeriksaan tugas.</p>
+
+    <details>
+      <summary>Matriks Normal AᵀA (6×6)</summary>
+      <div class="table-scroll"><table class="matrix-table" id="tableATA"></table></div>
+    </details>
+    <details>
+      <summary>Invers (AᵀA)⁻¹ (6×6)</summary>
+      <div class="table-scroll"><table class="matrix-table" id="tableInvATA"></table></div>
+    </details>
+    <details>
+      <summary>Vektor AᵀF (6×1)</summary>
+      <div class="table-scroll"><table class="matrix-table" id="tableATF"></table></div>
+    </details>
+  </section>
+
+</div>
+
+<footer>Kalkulator Transformasi Lauf 2D &middot; dihitung sepenuhnya di peramban, tanpa server</footer>
+
+<script>
+// ---------- data pakem (Tabel.png / Slide 18) ----------
+const baseData = [
+  { id: 1, x: 90, y: 90, X: 1420.250, Y: 895.680, role: 'GCP' },
+  { id: 2, x: 50, y: 40, X: 895.887, Y: 351.398, role: 'GCP' },
+  { id: 3, x: -30, y: 20, X: -944.926, Y: 641.434, role: 'GCP' },
+  { id: 4, x: 50, y: -40, X: 968.084, Y: -1384.140, role: 'GCP' },
+  { id: 5, x: 110, y: -80, X: 1993.262, Y: -2367.510, role: 'GCP' },
+  { id: 6, x: -100, y: 80, X: -3382.280, Y: 3487.762, role: 'GCP' },
+  { id: 7, x: 70, y: 60, X: null, Y: null, role: 'Titik Baru' },
+  { id: 8, x: 100, y: -70, X: null, Y: null, role: 'Titik Baru' },
+  { id: 9, x: 40, y: -60, X: null, Y: null, role: 'Titik Baru' },
+  { id: 10, x: -30, y: -75, X: null, Y: null, role: 'Titik Baru' }
+];
+
+function invertMatrix(matrix, n) {
+  let A = matrix.map(row => [...row]);
+  let I = Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => (i === j ? 1 : 0)));
+  for (let i = 0; i < n; i++) {
+    let pivot = A[i][i];
+    if (Math.abs(pivot) < 1e-12) {
+      for (let k = i + 1; k < n; k++) {
+        if (Math.abs(A[k][i]) > Math.abs(pivot)) {
+          [A[i], A[k]] = [A[k], A[i]];
+          [I[i], I[k]] = [I[k], I[i]];
+          pivot = A[i][i];
+          break;
+        }
+      }
+    }
+    for (let j = 0; j < n; j++) { A[i][j] /= pivot; I[i][j] /= pivot; }
+    for (let k = 0; k < n; k++) {
+      if (k !== i) {
+        let factor = A[k][i];
+        for (let j = 0; j < n; j++) { A[k][j] -= factor * A[i][j]; I[k][j] -= factor * I[i][j]; }
+      }
+    }
+  }
+  return I;
+}
+
+// solve the 6-parameter Lauf model via least squares
+function solveLauf(gcps) {
+  let A = [], F = [];
+  gcps.forEach(p => {
+    const x = p.x, y = p.y;
+    const x2y2 = x * x - y * y, m2xy = -2 * x * y, p2xy = 2 * x * y;
+    A.push([x, -y, x2y2, m2xy, 1, 0]); F.push(p.X);
+    A.push([y, x, p2xy, x2y2, 0, 1]); F.push(p.Y);
+  });
+  const m = A.length, n = 6;
+  let ATA = Array.from({ length: n }, () => Array(n).fill(0));
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) for (let k = 0; k < m; k++) ATA[i][j] += A[k][i] * A[k][j];
+  let ATF = Array(n).fill(0);
+  for (let i = 0; i < n; i++) for (let k = 0; k < m; k++) ATF[i] += A[k][i] * F[k];
+  const invATA = invertMatrix(ATA, n);
+  let X = Array(n).fill(0);
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) X[i] += invATA[i][j] * ATF[j];
+  let V = Array(m).fill(0), VTV = 0;
+  for (let k = 0; k < m; k++) {
+    let pred = 0;
+    for (let j = 0; j < n; j++) pred += A[k][j] * X[j];
+    V[k] = pred - F[k];
+    VTV += V[k] * V[k];
+  }
+  return { A, F, ATA, ATF, invATA, X, V, VTV, dof: m - n };
+}
+
+function fmt(v, d = 6) { return Number(v).toFixed(d); }
+
+function calculateAll() {
+  const xxRaw = document.getElementById('inputXX').value;
+  const yyRaw = document.getElementById('inputYY').value;
+  const xxVal = Math.min(99, Math.max(0, parseInt(xxRaw, 10) || 0));
+  const yyVal = Math.min(99, Math.max(0, parseInt(yyRaw, 10) || 0));
+  const xxStr = xxVal < 10 ? '0' + xxVal : '' + xxVal;
+  const yyStr = yyVal < 10 ? '0' + yyVal : '' + yyVal;
+
+  // deep-copy and patch point 1 with the NIM-derived coordinate
+  let data = JSON.parse(JSON.stringify(baseData));
+  data[0].x = parseFloat(`90.${xxStr}`);
+  data[0].y = parseFloat(`90.${yyStr}`);
+
+  document.getElementById('previewX').textContent = data[0].x.toFixed(2);
+  document.getElementById('previewY').textContent = data[0].y.toFixed(2);
+
+  // input table
+  const tbodyInput = document.querySelector('#tableInput tbody');
+  tbodyInput.innerHTML = '';
+  data.forEach(pt => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${pt.id}</td><td>${pt.x.toFixed(2)}</td><td>${pt.y.toFixed(2)}</td>
+      <td>${pt.X !== null ? pt.X.toFixed(3) : '&ndash;'}</td>
+      <td>${pt.Y !== null ? pt.Y.toFixed(3) : '&ndash;'}</td>
+      <td><span class="tag ${pt.role === 'GCP' ? 'gcp' : 'new'}">${pt.role}</span></td>`;
+    tbodyInput.appendChild(tr);
+  });
+
+  const gcps = data.slice(0, 6);
+  const newPts = data.slice(6, 10);
+
+  // ---- Lauf (6 parameters) ----
+  const lauf = solveLauf(gcps);
+  const [a, b, c, d, c1, c2] = lauf.X;
+  const sigma0Sq = lauf.VTV / lauf.dof;
+  const sigma0 = Math.sqrt(sigma0Sq);
+  const stdParams = lauf.X.map((_, i) => sigma0 * Math.sqrt(lauf.invATA[i][i]));
+
+  const paramRows = [
+    ['a — skala / rotasi orde-1 (x)', a, stdParams[0], ''],
+    ['b — skala / rotasi orde-1 (y)', b, stdParams[1], ''],
+    ['c — koefisien polinomial non-linier', c, stdParams[2], ''],
+    ['d — koefisien polinomial non-linier', d, stdParams[3], ''],
+    ['c₁ — translasi sumbu X', c1, stdParams[4], ' m'],
+    ['c₂ — translasi sumbu Y', c2, stdParams[5], ' m']
+  ];
+  const tbodyParams = document.querySelector('#tableParams tbody');
+  tbodyParams.innerHTML = '';
+  paramRows.forEach(([name, val, std, unit]) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${name}</td><td>${fmt(val)}${unit}</td><td>&plusmn; ${fmt(std)}${unit}</td>`;
+    tbodyParams.appendChild(tr);
+  });
+
+  document.getElementById('valVTV').textContent = fmt(lauf.VTV, 4) + ' m²';
+  document.getElementById('valSigma0Sq').textContent = fmt(sigma0Sq, 4) + ' m²';
+  document.getElementById('valSigma0').textContent = '± ' + fmt(sigma0, 4) + ' m';
+
+  let sumVx2 = 0, sumVy2 = 0;
+  for (let k = 0; k < 12; k++) { if (k % 2 === 0) sumVx2 += lauf.V[k] ** 2; else sumVy2 += lauf.V[k] ** 2; }
+  const rmseX = Math.sqrt(sumVx2 / 6);
+  const rmseY = Math.sqrt(sumVy2 / 6);
+  const rmse2D = Math.sqrt(rmseX ** 2 + rmseY ** 2);
+  document.getElementById('valRmseX').textContent = fmt(rmseX, 4) + ' m';
+  document.getElementById('valRmseY').textContent = fmt(rmseY, 4) + ' m';
+  document.getElementById('valRmse2D').textContent = fmt(rmse2D, 4) + ' m';
+
+  // residual table
+  const tbodyRes = document.getElementById('bodyResiduals');
+  tbodyRes.innerHTML = '';
+  for (let i = 0; i < 6; i++) {
+    const vx = lauf.V[2 * i], vy = lauf.V[2 * i + 1];
+    const dist = Math.sqrt(vx * vx + vy * vy);
+    const alpha = Math.atan2(vx, vy) * (180 / Math.PI);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${i + 1}</td><td>${vx >= 0 ? '+' : ''}${fmt(vx, 4)}</td>
+      <td>${vy >= 0 ? '+' : ''}${fmt(vy, 4)}</td><td>${fmt(dist, 4)}</td>
+      <td>${alpha >= 0 ? '+' : ''}${fmt(alpha, 2)}&deg;</td>`;
+    tbodyRes.appendChild(tr);
+  }
+
+  // new points
+  const tbodyNew = document.getElementById('bodyNewPoints');
+  tbodyNew.innerHTML = '';
+  newPts.forEach(p => {
+    const x = p.x, y = p.y;
+    const Xn = a * x - b * y + c * (x * x - y * y) - d * (2 * x * y) + c1;
+    const Yn = b * x + a * y + d * (x * x - y * y) + c * (2 * x * y) + c2;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${p.id}</td><td>${x.toFixed(2)}</td><td>${y.toFixed(2)}</td>
+      <td>${fmt(Xn, 3)}</td><td>${fmt(Yn, 3)}</td>`;
+    tbodyNew.appendChild(tr);
+  });
+
+  displayMatrix('#tableATA', lauf.ATA);
+  displayMatrix('#tableInvATA', lauf.invATA);
+  displayMatrix('#tableATF', lauf.ATF.map(v => [v]));
+}
+
+function displayMatrix(selector, mat) {
+  const el = document.querySelector(selector);
+  el.innerHTML = '';
+  mat.forEach(row => {
+    const tr = document.createElement('tr');
+    row.forEach(val => {
+      const td = document.createElement('td');
+      td.textContent = fmt(val, 4);
+      tr.appendChild(td);
+    });
+    el.appendChild(tr);
+  });
+}
+
+document.getElementById('inputXX').addEventListener('input', calculateAll);
+document.getElementById('inputYY').addEventListener('input', calculateAll);
+window.addEventListener('DOMContentLoaded', calculateAll);
+</script>
+</body>
+</html>
